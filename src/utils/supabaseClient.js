@@ -1,6 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || "";
+const rawSupabaseUrl = process.env.REACT_APP_SUPABASE_URL || "";
+let supabaseUrl = rawSupabaseUrl;
+try {
+  // Ensure we never end up with a base URL that includes a path segment.
+  // Supabase expects the project root, like https://<ref>.supabase.co
+  supabaseUrl = new URL(rawSupabaseUrl).origin;
+} catch {
+  // leave as-is; supabaseEnabled will be false if key/url missing
+}
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || "";
 
 export const supabaseEnabled = Boolean(supabaseUrl && supabaseAnonKey);
@@ -14,6 +22,13 @@ export const supabase = supabaseEnabled
       },
     })
   : null;
+
+export function getSupabaseUrlDebug() {
+  return {
+    raw: String(rawSupabaseUrl || ""),
+    normalized: String(supabaseUrl || ""),
+  };
+}
 
 export function getAppRedirectUrl() {
   const publicUrl = String(process.env.PUBLIC_URL || "").trim();

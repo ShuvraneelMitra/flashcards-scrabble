@@ -1,13 +1,15 @@
-import { getAppRedirectUrl, supabase, supabaseEnabled } from "./supabaseClient";
+import { getAppRedirectUrl, getSupabaseUrlDebug, supabase, supabaseEnabled } from "./supabaseClient";
 
 const TOKEN_KEY = "flashcards_scrabble_auth_token";
 
 function safeSupabaseUrlForError() {
-  const raw = String(process.env.REACT_APP_SUPABASE_URL || "").trim();
+  const dbg = getSupabaseUrlDebug();
+  const raw = String(dbg.raw || "").trim();
   if (!raw) return "(missing)";
   try {
     const url = new URL(raw);
-    return `${url.origin}`;
+    const hasPath = url.pathname && url.pathname !== "/";
+    return `${dbg.normalized}${hasPath ? " (env had path)" : ""}`;
   } catch {
     return "(invalid)";
   }
