@@ -20,7 +20,9 @@ export function getAppRedirectUrl() {
 
   // If CRA PUBLIC_URL is already absolute (some build setups do this), use it as-is.
   if (/^https?:\/\//i.test(publicUrl)) {
-    return new URL(publicUrl).toString().replace(/\/+$/g, "");
+    const url = new URL(publicUrl);
+    url.pathname = url.pathname.replace(/\/+$/g, "") + "/";
+    return url.toString().replace(/\/+$/g, "/");
   }
 
   // If we're already on a nested path (GitHub Pages), use the current href base.
@@ -28,7 +30,7 @@ export function getAppRedirectUrl() {
     const current = new URL(window.location.href);
     const parts = current.pathname.split("/").filter(Boolean);
     if (parts.length >= 1) {
-      return `${current.origin}/${parts[0]}`.replace(/\/+$/g, "");
+      return `${current.origin}/${parts[0]}/`.replace(/\/+$/g, "/");
     }
   } catch {
     // ignore
@@ -37,11 +39,15 @@ export function getAppRedirectUrl() {
   // Prefer PUBLIC_URL as a path (GitHub Pages builds typically set this to "/<repo>").
   if (publicUrl) {
     const normalized = publicUrl.startsWith("/") ? publicUrl : `/${publicUrl}`;
-    return new URL(normalized.replace(/\/+$/g, "") + "/", window.location.origin).toString().replace(/\/+$/g, "");
+    const url = new URL(normalized.replace(/\/+$/g, "") + "/", window.location.origin);
+    url.pathname = url.pathname.replace(/\/+$/g, "") + "/";
+    return url.toString().replace(/\/+$/g, "/");
   }
 
   // Fallback: infer a GitHub Pages-style base path from the current location.
   const parts = window.location.pathname.split("/").filter(Boolean);
   const inferredBase = parts.length ? `/${parts[0]}` : "";
-  return new URL(inferredBase.replace(/\/+$/g, "") + "/", window.location.origin).toString().replace(/\/+$/g, "");
+  const url = new URL(inferredBase.replace(/\/+$/g, "") + "/", window.location.origin);
+  url.pathname = url.pathname.replace(/\/+$/g, "") + "/";
+  return url.toString().replace(/\/+$/g, "/");
 }
