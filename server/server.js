@@ -7,7 +7,7 @@ const PORT = Number(process.env.AUTH_PORT || 4000);
 const NODE_ENV = process.env.NODE_ENV || "development";
 const IS_PRODUCTION = NODE_ENV === "production";
 const JWT_SECRET = process.env.JWT_SECRET || "";
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+// Google auth removed.
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || "";
@@ -116,7 +116,6 @@ function isSensitiveEndpoint(method, pathname) {
     "/api/auth/login",
     "/api/auth/request-password-reset",
     "/api/auth/reset-password",
-    "/api/auth/google",
     "/api/auth/change-username",
     "/api/auth/change-password",
     "/api/auth/delete-account",
@@ -271,13 +270,7 @@ function authPayload(user) {
 }
 
 async function verifyGoogleToken(idToken) {
-  if (!GOOGLE_CLIENT_ID) throw new Error("Google sign-in is not configured on the server.");
-  const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-  if (!response.ok) throw new Error("Google token verification failed.");
-  const profile = await response.json();
-  if (profile.aud !== GOOGLE_CLIENT_ID) throw new Error("Google token audience mismatch.");
-  if (!profile.email_verified) throw new Error("Google account email is not verified.");
-  return profile;
+  throw new Error("Google sign-in is not supported.");
 }
 
 async function handleApi(req, res) {
@@ -298,7 +291,7 @@ async function handleApi(req, res) {
         app: "Tribble",
         environment: NODE_ENV,
         emailConfigured: Boolean(RESEND_API_KEY && EMAIL_FROM),
-        googleConfigured: Boolean(GOOGLE_CLIENT_ID),
+        googleConfigured: false,
       });
     }
 
@@ -409,37 +402,6 @@ async function handleApi(req, res) {
       delete user.passwordResetCodeHash;
       delete user.passwordResetCodeExpiresAt;
       delete user.lastPasswordResetCodeSentAt;
-      writeDb(db);
-      return sendJson(res, 200, authPayload(user));
-    }
-
-    if (req.method === "POST" && url.pathname === "/api/auth/google") {
-      const { credential } = await readBody(req);
-      const profile = await verifyGoogleToken(credential);
-      const db = readDb();
-      const email = normalizeEmail(profile.email);
-      let user = db.users.find((item) => item.email === email);
-      if (!user) {
-        const baseUsername = normalizeUsername((profile.email || "").split("@")[0]).replace(/[^a-z0-9_]/g, "").slice(0, 18) || "google_user";
-        let username = baseUsername;
-        let suffix = 1;
-        while (db.users.some((item) => item.username === username)) {
-          username = `${baseUsername}${suffix}`;
-          suffix += 1;
-        }
-        user = {
-          id: crypto.randomUUID(),
-          fullName: profile.name || email,
-          username,
-          email,
-          emailVerified: true,
-          provider: "google",
-          createdAt: new Date().toISOString(),
-        };
-        db.users.push(user);
-      } else {
-        user.emailVerified = true;
-      }
       writeDb(db);
       return sendJson(res, 200, authPayload(user));
     }

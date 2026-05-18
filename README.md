@@ -28,8 +28,6 @@ NODE_ENV=production
 JWT_SECRET=replace-with-a-long-random-secret
 CLIENT_ORIGIN=https://your-domain.com
 DATA_DIR=/var/data
-GOOGLE_CLIENT_ID=your-google-oauth-client-id
-REACT_APP_GOOGLE_CLIENT_ID=your-google-oauth-client-id
 RESEND_API_KEY=your-resend-api-key
 EMAIL_FROM=Tribble <noreply@your-domain.com>
 ```
@@ -62,7 +60,6 @@ In GitHub, add these repository secrets:
 ```bash
 REACT_APP_SUPABASE_URL
 REACT_APP_SUPABASE_ANON_KEY
-REACT_APP_GOOGLE_CLIENT_ID   # optional
 ```
 
 Then enable Pages:

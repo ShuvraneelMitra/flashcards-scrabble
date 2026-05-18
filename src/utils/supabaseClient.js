@@ -16,7 +16,21 @@ export const supabase = supabaseEnabled
   : null;
 
 export function getAppRedirectUrl() {
-  const basePath = process.env.PUBLIC_URL || "";
-  const cleanBase = basePath && basePath !== "/" ? `/${basePath.replace(/^\/+|\/+$/g, "")}` : "";
-  return `${window.location.origin}${cleanBase || ""}`;
+  const publicUrl = String(process.env.PUBLIC_URL || "").trim();
+
+  // If CRA PUBLIC_URL is already absolute (some build setups do this), use it as-is.
+  if (/^https?:\/\//i.test(publicUrl)) {
+    return publicUrl.replace(/\/+$/g, "");
+  }
+
+  // Prefer PUBLIC_URL as a path (GitHub Pages builds typically set this to "/<repo>").
+  if (publicUrl) {
+    const normalized = publicUrl.startsWith("/") ? publicUrl : `/${publicUrl}`;
+    return `${window.location.origin}${normalized}`.replace(/\/+$/g, "");
+  }
+
+  // Fallback: infer a GitHub Pages-style base path from the current location.
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const inferredBase = parts.length ? `/${parts[0]}` : "";
+  return `${window.location.origin}${inferredBase}`.replace(/\/+$/g, "");
 }

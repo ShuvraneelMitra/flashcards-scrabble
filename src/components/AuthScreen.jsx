@@ -3,7 +3,6 @@ import { KeyRound, LogIn, MailCheck, Send, UserPlus } from "lucide-react";
 import {
   clearToken,
   getMe,
-  googleLogin,
   login,
   requestPasswordReset,
   resendCode,
@@ -11,8 +10,6 @@ import {
   verifyEmail,
 } from "../utils/authApi";
 import { getAppRedirectUrl, supabase, supabaseEnabled } from "../utils/supabaseClient";
-
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
 function Field({ label, ...props }) {
   return (
@@ -95,39 +92,8 @@ export default function AuthScreen({ onAuthenticated }) {
   }, [onAuthenticated]);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
-    const existing = document.querySelector("script[data-google-identity]");
-    const initGoogle = () => {
-      if (!window.google || !googleButtonRef.current) return;
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: async ({ credential }) => {
-          await run(async () => {
-            const { user } = await googleLogin(credential);
-            onAuthenticated(user);
-          });
-        },
-      });
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "filled_black",
-        size: "large",
-        width: 330,
-      });
-    };
-
-    if (existing) {
-      initGoogle();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleIdentity = "true";
-    script.onload = initGoogle;
-    document.body.appendChild(script);
-  }, [onAuthenticated]);
+    // Google sign-in removed.
+  }, []);
 
   const update = (key) => (event) => {
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -371,35 +337,7 @@ export default function AuthScreen({ onAuthenticated }) {
           </form>
         )}
 
-        <div style={{ alignItems: "center", display: "flex", gap: 12, margin: "22px 0" }}>
-          <div style={{ background: "#2a2a35", flex: 1, height: 1 }} />
-          <span style={{ color: "#444", fontSize: 10, letterSpacing: 2 }}>GOOGLE</span>
-          <div style={{ background: "#2a2a35", flex: 1, height: 1 }} />
-        </div>
-        {supabaseEnabled ? (
-          <PrimaryButton
-            disabled={loading}
-            icon={<KeyRound size={15} />}
-            onClick={() =>
-              run(async () => {
-                const { error } = await supabase.auth.signInWithOAuth({
-                  provider: "google",
-                  options: { redirectTo: getAppRedirectUrl() },
-                });
-                if (error) throw new Error(error.message);
-              })
-            }
-            type="button"
-          >
-            CONTINUE WITH GOOGLE
-          </PrimaryButton>
-        ) : GOOGLE_CLIENT_ID ? (
-          <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center", minHeight: 44 }} />
-        ) : (
-          <div style={{ color: "#555", fontSize: 11, lineHeight: 1.5, textAlign: "center" }}>
-            Set REACT_APP_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID to enable Google sign-in.
-          </div>
-        )}
+        <div ref={googleButtonRef} style={{ display: "none" }} />
 
         {(error || message) && (
           <div

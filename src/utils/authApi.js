@@ -148,16 +148,6 @@ export function resendCode(email) {
   });
 }
 
-export function googleLogin(credential) {
-  if (supabaseEnabled) {
-    throw new Error("Supabase Google login uses redirect flow. Use the Google button.");
-  }
-  return request("/api/auth/google", {
-    method: "POST",
-    body: JSON.stringify({ credential }),
-  });
-}
-
 export function getMe() {
   if (supabaseEnabled) {
     return supabase.auth.getUser().then(({ data, error }) => {

@@ -16,8 +16,6 @@ services:
         generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: REACT_APP_GOOGLE_CLIENT_ID
-        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
