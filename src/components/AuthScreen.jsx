@@ -106,7 +106,7 @@ export default function AuthScreen({ onAuthenticated }) {
     try {
       await action();
     } catch (err) {
-      setError(err.message);
+      setError(String(err?.message || err));
     } finally {
       setLoading(false);
     }

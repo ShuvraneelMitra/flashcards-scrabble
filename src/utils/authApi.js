@@ -36,17 +36,18 @@ export function signup(payload) {
     const password = String(payload.password || "");
     const fullName = String(payload.fullName || "").trim();
     const username = String(payload.username || "").trim().toLowerCase();
+    const redirectTo = getAppRedirectUrl();
     return supabase.auth
       .signUp({
         email,
         password,
         options: {
           data: { fullName, username },
-          emailRedirectTo: getAppRedirectUrl(),
+          emailRedirectTo: redirectTo,
         },
       })
       .then(({ data, error }) => {
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(`${error.message} (redirect: ${redirectTo})`);
         return {
           user: {
             id: data.user?.id,
