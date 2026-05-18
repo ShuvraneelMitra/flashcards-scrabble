@@ -196,7 +196,7 @@ export default function AuthScreen({ onAuthenticated }) {
   const handleRequestPasswordReset = (event) => {
     event.preventDefault();
     run(async () => {
-      const { email, message: nextMessage } = await requestPasswordReset(form.emailOrUsername);
+      const { message: nextMessage } = await requestPasswordReset(form.emailOrUsername);
       setMode("login");
       setMessage(nextMessage || "Password reset email sent.");
     });
