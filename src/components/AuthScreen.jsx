@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyRound, LogIn, MailCheck, Send, UserPlus } from "lucide-react";
+import { LogIn, MailCheck, Send, UserPlus } from "lucide-react";
 import {
   clearToken,
   getMe,
@@ -9,7 +9,7 @@ import {
   signup,
   verifyEmail,
 } from "../utils/authApi";
-import { getAppRedirectUrl, supabase, supabaseEnabled } from "../utils/supabaseClient";
+import { supabaseEnabled } from "../utils/supabaseClient";
 
 function Field({ label, ...props }) {
   return (

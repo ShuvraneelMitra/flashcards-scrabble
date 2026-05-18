@@ -21,7 +21,8 @@
     "start:prod": "node server/server.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "ship": "powershell -ExecutionPolicy Bypass -File scripts/ship.ps1"
   },
   "proxy": "http://localhost:4000",
   "eslintConfig": {
