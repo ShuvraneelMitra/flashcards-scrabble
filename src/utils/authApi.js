@@ -2,6 +2,17 @@ import { getAppRedirectUrl, supabase, supabaseEnabled } from "./supabaseClient";
 
 const TOKEN_KEY = "flashcards_scrabble_auth_token";
 
+function safeSupabaseUrlForError() {
+  const raw = String(process.env.REACT_APP_SUPABASE_URL || "").trim();
+  if (!raw) return "(missing)";
+  try {
+    const url = new URL(raw);
+    return `${url.origin}`;
+  } catch {
+    return "(invalid)";
+  }
+}
+
 export function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -47,7 +58,7 @@ export function signup(payload) {
         },
       })
       .then(({ data, error }) => {
-        if (error) throw new Error(`${error.message} (redirect: ${redirectTo})`);
+        if (error) throw new Error(`${error.message} (redirect: ${redirectTo}) (supabase: ${safeSupabaseUrlForError()})`);
         return {
           user: {
             id: data.user?.id,
