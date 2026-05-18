@@ -4,11 +4,26 @@ const http = require("http");
 const path = require("path");
 
 const PORT = Number(process.env.AUTH_PORT || 4000);
-const JWT_SECRET = process.env.JWT_SECRET || "dev-only-change-me";
+const NODE_ENV = process.env.NODE_ENV || "development";
+const IS_PRODUCTION = NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || "";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const DATA_DIR = path.join(__dirname, "data");
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const EMAIL_FROM = process.env.EMAIL_FROM || "";
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "auth-db.json");
+const BUILD_DIR = path.join(__dirname, "..", "build");
 const CODE_TTL_MS = 10 * 60 * 1000;
+const CODE_RESEND_COOLDOWN_MS = Number(process.env.CODE_RESEND_COOLDOWN_MS || 60 * 1000);
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 40);
+const JWT_SIGNING_SECRET = JWT_SECRET || "dev-only-change-me";
+const rateLimitBuckets = new Map();
+
+if (IS_PRODUCTION && !JWT_SECRET) {
+  throw new Error("JWT_SECRET is required when NODE_ENV=production.");
+}
 
 function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -35,7 +50,7 @@ function signJwt(payload) {
   const header = { alg: "HS256", typ: "JWT" };
   const body = { ...payload, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12 };
   const unsigned = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(body))}`;
-  const signature = crypto.createHmac("sha256", JWT_SECRET).update(unsigned).digest("base64url");
+  const signature = crypto.createHmac("sha256", JWT_SIGNING_SECRET).update(unsigned).digest("base64url");
   return `${unsigned}.${signature}`;
 }
 
@@ -43,7 +58,7 @@ function verifyJwt(token) {
   const [encodedHeader, encodedPayload, signature] = String(token || "").split(".");
   if (!encodedHeader || !encodedPayload || !signature) return null;
   const unsigned = `${encodedHeader}.${encodedPayload}`;
-  const expected = crypto.createHmac("sha256", JWT_SECRET).update(unsigned).digest("base64url");
+  const expected = crypto.createHmac("sha256", JWT_SIGNING_SECRET).update(unsigned).digest("base64url");
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
@@ -80,11 +95,48 @@ function publicUser(user) {
 function sendJson(res, status, data) {
   res.writeHead(status, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "http://localhost:3000",
+    "Access-Control-Allow-Origin": CLIENT_ORIGIN,
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+    "Vary": "Origin",
   });
   res.end(JSON.stringify(data));
+}
+
+function getClientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+}
+
+function isSensitiveEndpoint(method, pathname) {
+  if (method !== "POST") return false;
+  return [
+    "/api/auth/signup",
+    "/api/auth/verify-email",
+    "/api/auth/resend-code",
+    "/api/auth/login",
+    "/api/auth/request-password-reset",
+    "/api/auth/reset-password",
+    "/api/auth/google",
+    "/api/auth/change-username",
+    "/api/auth/change-password",
+    "/api/auth/delete-account",
+  ].includes(pathname);
+}
+
+function checkRateLimit(req, pathname) {
+  const now = Date.now();
+  const key = `${getClientIp(req)}:${pathname}`;
+  const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  if (bucket.resetAt <= now) {
+    bucket.count = 0;
+    bucket.resetAt = now + RATE_LIMIT_WINDOW_MS;
+  }
+  bucket.count += 1;
+  rateLimitBuckets.set(key, bucket);
+  if (bucket.count > RATE_LIMIT_MAX) {
+    return Math.ceil((bucket.resetAt - now) / 1000);
+  }
+  return 0;
 }
 
 function readBody(req) {
@@ -100,6 +152,40 @@ function readBody(req) {
     req.on("end", () => resolve(body ? JSON.parse(body) : {}));
     req.on("error", reject);
   });
+}
+
+function contentTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return {
+    ".css": "text/css",
+    ".html": "text/html",
+    ".ico": "image/x-icon",
+    ".js": "application/javascript",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".txt": "text/plain",
+  }[ext] || "application/octet-stream";
+}
+
+function sendStatic(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const requestedPath = decodeURIComponent(url.pathname);
+  const targetPath = requestedPath === "/" ? "index.html" : requestedPath.slice(1);
+  const resolvedPath = path.resolve(BUILD_DIR, targetPath);
+  const safeBuildDir = path.resolve(BUILD_DIR);
+  const filePath = resolvedPath.startsWith(safeBuildDir) && fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()
+    ? resolvedPath
+    : path.join(BUILD_DIR, "index.html");
+
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Build output not found. Run npm run build first.");
+    return;
+  }
+
+  res.writeHead(200, { "Content-Type": contentTypeFor(filePath) });
+  fs.createReadStream(filePath).pipe(res);
 }
 
 function normalizeEmail(email) {
@@ -118,18 +204,62 @@ function validateSignup({ fullName, username, email, password }) {
   return "";
 }
 
-function issueVerification(user) {
-  const code = String(crypto.randomInt(100000, 999999));
-  user.verificationCodeHash = hashCode(code);
-  user.verificationCodeExpiresAt = Date.now() + CODE_TTL_MS;
-  console.log(`Verification code for ${user.email}: ${code}`);
+async function sendEmail({ to, subject, text }) {
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    console.log(`[dev email fallback] ${subject} -> ${to}\n${text}`);
+    return;
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to,
+      subject,
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to send email.");
+  }
 }
 
-function issuePasswordReset(user) {
+async function issueVerification(user) {
+  const now = Date.now();
+  if (user.lastVerificationCodeSentAt && now - user.lastVerificationCodeSentAt < CODE_RESEND_COOLDOWN_MS) {
+    throw new Error("Please wait before requesting another verification code.");
+  }
+  const code = String(crypto.randomInt(100000, 999999));
+  user.verificationCodeHash = hashCode(code);
+  user.verificationCodeExpiresAt = now + CODE_TTL_MS;
+  user.lastVerificationCodeSentAt = now;
+  await sendEmail({
+    to: user.email,
+    subject: "Your Tribble verification code",
+    text: `Your Tribble verification code is ${code}. It expires in 10 minutes.`,
+  });
+}
+
+async function issuePasswordReset(user) {
+  const now = Date.now();
+  if (user.lastPasswordResetCodeSentAt && now - user.lastPasswordResetCodeSentAt < CODE_RESEND_COOLDOWN_MS) {
+    throw new Error("Please wait before requesting another password reset code.");
+  }
   const code = String(crypto.randomInt(100000, 999999));
   user.passwordResetCodeHash = hashCode(code);
-  user.passwordResetCodeExpiresAt = Date.now() + CODE_TTL_MS;
-  console.log(`Password reset code for ${user.email}: ${code}`);
+  user.passwordResetCodeExpiresAt = now + CODE_TTL_MS;
+  user.lastPasswordResetCodeSentAt = now;
+  await sendEmail({
+    to: user.email,
+    subject: "Your Tribble password reset code",
+    text: `Your Tribble password reset code is ${code}. It expires in 10 minutes.`,
+  });
 }
 
 function authPayload(user) {
@@ -152,8 +282,25 @@ async function verifyGoogleToken(idToken) {
 async function handleApi(req, res) {
   if (req.method === "OPTIONS") return sendJson(res, 200, {});
   const url = new URL(req.url, `http://${req.headers.host}`);
+  if (isSensitiveEndpoint(req.method, url.pathname)) {
+    const retryAfter = checkRateLimit(req, url.pathname);
+    if (retryAfter) {
+      res.setHeader("Retry-After", String(retryAfter));
+      return sendJson(res, 429, { error: "Too many requests. Please try again later." });
+    }
+  }
 
   try {
+    if (req.method === "GET" && url.pathname === "/api/health") {
+      return sendJson(res, 200, {
+        ok: true,
+        app: "Tribble",
+        environment: NODE_ENV,
+        emailConfigured: Boolean(RESEND_API_KEY && EMAIL_FROM),
+        googleConfigured: Boolean(GOOGLE_CLIENT_ID),
+      });
+    }
+
     if (req.method === "POST" && url.pathname === "/api/auth/signup") {
       const body = await readBody(req);
       const error = validateSignup(body);
@@ -175,7 +322,7 @@ async function handleApi(req, res) {
         provider: "password",
         createdAt: new Date().toISOString(),
       };
-      issueVerification(user);
+      await issueVerification(user);
       db.users.push(user);
       writeDb(db);
       return sendJson(res, 201, { ...authPayload(user), message: "Verification code sent. In development it is printed in the server console." });
@@ -192,6 +339,7 @@ async function handleApi(req, res) {
       user.emailVerified = true;
       delete user.verificationCodeHash;
       delete user.verificationCodeExpiresAt;
+      delete user.lastVerificationCodeSentAt;
       writeDb(db);
       return sendJson(res, 200, authPayload(user));
     }
@@ -201,7 +349,7 @@ async function handleApi(req, res) {
       const db = readDb();
       const user = db.users.find((item) => item.email === normalizeEmail(email));
       if (!user) return sendJson(res, 404, { error: "No account found for that email." });
-      issueVerification(user);
+      await issueVerification(user);
       writeDb(db);
       return sendJson(res, 200, { message: "Verification code sent. In development it is printed in the server console." });
     }
@@ -227,7 +375,7 @@ async function handleApi(req, res) {
         return sendJson(res, 400, { error: "Password reset is only available for email/password accounts." });
       }
 
-      issuePasswordReset(user);
+      await issuePasswordReset(user);
       writeDb(db);
       return sendJson(res, 200, {
         email: user.email,
@@ -259,6 +407,7 @@ async function handleApi(req, res) {
       user.updatedAt = new Date().toISOString();
       delete user.passwordResetCodeHash;
       delete user.passwordResetCodeExpiresAt;
+      delete user.lastPasswordResetCodeSentAt;
       writeDb(db);
       return sendJson(res, 200, authPayload(user));
     }
@@ -372,7 +521,11 @@ async function handleApi(req, res) {
       return sendJson(res, 200, { message: "Account deleted." });
     }
 
-    return sendJson(res, 404, { error: "Not found." });
+    if (url.pathname.startsWith("/api/")) {
+      return sendJson(res, 404, { error: "Not found." });
+    }
+
+    return sendStatic(req, res);
   } catch (error) {
     return sendJson(res, 500, { error: error.message || "Server error." });
   }
@@ -380,7 +533,11 @@ async function handleApi(req, res) {
 
 http.createServer(handleApi).listen(PORT, () => {
   console.log(`Auth API listening on http://localhost:${PORT}`);
-  if (JWT_SECRET === "dev-only-change-me") {
+  if (!JWT_SECRET) {
     console.log("Set JWT_SECRET before using this outside local development.");
   }
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    console.log("Email provider is not configured. Verification and reset codes will be printed to the server console.");
+  }
+  console.log(`Allowed client origin: ${CLIENT_ORIGIN}`);
 });

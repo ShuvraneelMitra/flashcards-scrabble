@@ -5,6 +5,7 @@ import Game from "./components/Game";
 import { changePassword, changeUsername, clearToken, deleteAccount } from "./utils/authApi";
 import { clearSchedules } from "./utils/scheduleStore";
 import { clearWordLists } from "./utils/wordListStore";
+import { supabase, supabaseEnabled } from "./utils/supabaseClient";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -31,6 +32,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (supabaseEnabled && supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
     leaveAccount();
   };
 
@@ -64,6 +68,7 @@ export default function App() {
     return (
       <UploadScreen
         user={user}
+        authMode={supabaseEnabled ? "supabase" : "local"}
         onLogout={handleLogout}
         onDeleteAccount={handleDeleteAccount}
         onChangeUsername={handleChangeUsername}
@@ -91,6 +96,7 @@ export default function App() {
       listId={listId}
       practiceMode={practiceMode}
       user={user}
+      authMode={supabaseEnabled ? "supabase" : "local"}
       onLogout={handleLogout}
       onDeleteAccount={handleDeleteAccount}
       onChangeUsername={handleChangeUsername}

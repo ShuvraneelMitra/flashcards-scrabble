@@ -12,6 +12,7 @@ export default function UploadScreen({
   onChangePassword,
   onToggleTheme,
   theme,
+  authMode,
   user,
 }) {
   const [dragging3, setDragging3] = useState(false);
@@ -153,6 +154,7 @@ export default function UploadScreen({
     }}>
       <AccountMenu
         user={user}
+        authMode={authMode}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}

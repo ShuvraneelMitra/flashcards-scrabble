@@ -125,6 +125,7 @@ export default function Game({
   onChangePassword,
   onToggleTheme,
   theme,
+  authMode,
   user,
 }) {
   const usedRef = useRef(new Set());
@@ -285,6 +286,7 @@ export default function Game({
       <style>{STYLES}</style>
       <AccountMenu
         user={user}
+        authMode={authMode}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}

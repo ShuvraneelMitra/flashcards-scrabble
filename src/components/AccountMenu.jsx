@@ -5,6 +5,7 @@ export default function AccountMenu({
   user,
   theme = "dark",
   onToggleTheme,
+  authMode = "local",
   onLogout,
   onDeleteAccount,
   onChangeUsername,
@@ -234,21 +235,23 @@ export default function AccountMenu({
               />
             </button>
           </div>
-          <button
-            onClick={() => {
-              setShowPasswordForm((value) => !value);
-              setMenuError("");
-              setMenuMessage("");
-              onError?.("");
-              onMessage?.("");
-            }}
-            disabled={changingPassword}
-            style={menuButtonStyle()}
-          >
-            <KeyRound size={14} />
-            {changingPassword ? "CHANGING..." : "CHANGE PASSWORD"}
-          </button>
-          {showPasswordForm && (
+          {authMode === "local" && (
+            <button
+              onClick={() => {
+                setShowPasswordForm((value) => !value);
+                setMenuError("");
+                setMenuMessage("");
+                onError?.("");
+                onMessage?.("");
+              }}
+              disabled={changingPassword}
+              style={menuButtonStyle()}
+            >
+              <KeyRound size={14} />
+              {changingPassword ? "CHANGING..." : "CHANGE PASSWORD"}
+            </button>
+          )}
+          {authMode === "local" && showPasswordForm && (
             <form
               onSubmit={changePassword}
               style={{
@@ -312,10 +315,12 @@ export default function AccountMenu({
             <LogOut size={14} />
             LOG OUT
           </button>
-          <button onClick={deleteAccount} disabled={deleting} style={menuButtonStyle(true)}>
-            <UserX size={14} />
-            {deleting ? "DELETING..." : "DELETE ACCOUNT"}
-          </button>
+          {authMode === "local" && (
+            <button onClick={deleteAccount} disabled={deleting} style={menuButtonStyle(true)}>
+              <UserX size={14} />
+              {deleting ? "DELETING..." : "DELETE ACCOUNT"}
+            </button>
+          )}
           {(menuError || menuMessage) && (
             <div
               style={{

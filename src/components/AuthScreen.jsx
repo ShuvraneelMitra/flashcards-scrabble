@@ -7,10 +7,10 @@ import {
   login,
   requestPasswordReset,
   resendCode,
-  resetPassword,
   signup,
   verifyEmail,
 } from "../utils/authApi";
+import { supabase, supabaseEnabled } from "../utils/supabaseClient";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
@@ -199,23 +199,8 @@ export default function AuthScreen({ onAuthenticated }) {
     run(async () => {
       const { email, message: nextMessage } = await requestPasswordReset(form.emailOrUsername);
       setResetEmail(email);
-      setMode("resetPassword");
-      setMessage(nextMessage || "Password reset code sent.");
-    });
-  };
-
-  const handleResetPassword = (event) => {
-    event.preventDefault();
-    run(async () => {
-      if (form.newPassword !== form.confirmPassword) {
-        throw new Error("New passwords do not match.");
-      }
-      const { user } = await resetPassword({
-        email: resetEmail,
-        code: form.resetCode,
-        newPassword: form.newPassword,
-      });
-      onAuthenticated(user);
+      setMode("login");
+      setMessage(nextMessage || "Password reset email sent.");
     });
   };
 
@@ -283,7 +268,13 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {mode === "login" && (
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <Field label="EMAIL OR USERNAME" value={form.emailOrUsername} onChange={update("emailOrUsername")} autoComplete="username" required />
+            <Field
+              label={supabaseEnabled ? "EMAIL" : "EMAIL OR USERNAME"}
+              value={form.emailOrUsername}
+              onChange={update("emailOrUsername")}
+              autoComplete="username"
+              required
+            />
             <Field label="PASSWORD" type="password" value={form.password} onChange={update("password")} autoComplete="current-password" required />
             <PrimaryButton disabled={loading} icon={<LogIn size={15} />}>LOGIN</PrimaryButton>
             <button
@@ -349,9 +340,15 @@ export default function AuthScreen({ onAuthenticated }) {
         {mode === "forgotPassword" && (
           <form onSubmit={handleRequestPasswordReset} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ color: "#777", fontSize: 12, lineHeight: 1.6 }}>
-              Enter your email or username. A 6-digit reset code will be sent to your email.
+              Enter your email{supabaseEnabled ? "" : " or username"}. A password reset email will be sent.
             </div>
-            <Field label="EMAIL OR USERNAME" value={form.emailOrUsername} onChange={update("emailOrUsername")} autoComplete="username" required />
+            <Field
+              label={supabaseEnabled ? "EMAIL" : "EMAIL OR USERNAME"}
+              value={form.emailOrUsername}
+              onChange={update("emailOrUsername")}
+              autoComplete="username"
+              required
+            />
             <PrimaryButton disabled={loading} icon={<Send size={15} />}>SEND RESET CODE</PrimaryButton>
             <button
               type="button"
@@ -376,41 +373,29 @@ export default function AuthScreen({ onAuthenticated }) {
           </form>
         )}
 
-        {mode === "resetPassword" && (
-          <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ color: "#777", fontSize: 12, lineHeight: 1.6 }}>
-              Enter the 6-digit reset code for {resetEmail}.
-            </div>
-            <Field label="RESET CODE" value={form.resetCode} onChange={update("resetCode")} inputMode="numeric" maxLength={6} required />
-            <Field label="NEW PASSWORD" type="password" value={form.newPassword} onChange={update("newPassword")} autoComplete="new-password" minLength={8} required />
-            <Field label="CONFIRM PASSWORD" type="password" value={form.confirmPassword} onChange={update("confirmPassword")} autoComplete="new-password" minLength={8} required />
-            <PrimaryButton disabled={loading} icon={<KeyRound size={15} />}>CHANGE PASSWORD</PrimaryButton>
-            <button
-              type="button"
-              onClick={handleRequestPasswordReset}
-              disabled={loading}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#60a5fa",
-                cursor: loading ? "not-allowed" : "pointer",
-                fontFamily: "'Courier New', monospace",
-                fontSize: 11,
-                letterSpacing: 1,
-                padding: 4,
-              }}
-            >
-              RESEND CODE
-            </button>
-          </form>
-        )}
-
         <div style={{ alignItems: "center", display: "flex", gap: 12, margin: "22px 0" }}>
           <div style={{ background: "#2a2a35", flex: 1, height: 1 }} />
           <span style={{ color: "#444", fontSize: 10, letterSpacing: 2 }}>GOOGLE</span>
           <div style={{ background: "#2a2a35", flex: 1, height: 1 }} />
         </div>
-        {GOOGLE_CLIENT_ID ? (
+        {supabaseEnabled ? (
+          <PrimaryButton
+            disabled={loading}
+            icon={<KeyRound size={15} />}
+            onClick={() =>
+              run(async () => {
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: window.location.origin },
+                });
+                if (error) throw new Error(error.message);
+              })
+            }
+            type="button"
+          >
+            CONTINUE WITH GOOGLE
+          </PrimaryButton>
+        ) : GOOGLE_CLIENT_ID ? (
           <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center", minHeight: 44 }} />
         ) : (
           <div style={{ color: "#555", fontSize: 11, lineHeight: 1.5, textAlign: "center" }}>
