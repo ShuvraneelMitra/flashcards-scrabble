@@ -224,7 +224,10 @@ export function changePassword(payload) {
 
 export function deleteAccount() {
   if (supabaseEnabled) {
-    throw new Error("Account deletion requires a backend when using Supabase Auth.");
+    return supabase.functions.invoke("delete-account").then(({ error }) => {
+      if (error) throw new Error(error.message);
+      return { message: "Account deleted." };
+    });
   }
   return request("/api/auth/delete-account", {
     method: "POST",

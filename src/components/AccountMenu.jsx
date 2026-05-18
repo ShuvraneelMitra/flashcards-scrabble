@@ -175,6 +175,8 @@ export default function AccountMenu({
             boxShadow: "0 14px 30px rgba(0,0,0,0.35)",
             marginTop: 8,
             minWidth: 210,
+            maxHeight: "80vh",
+            overflowY: "auto",
             overflow: "hidden",
             position: "absolute",
             right: 0,
@@ -317,12 +319,10 @@ export default function AccountMenu({
             <LogOut size={14} />
             LOG OUT
           </button>
-          {authMode === "local" && (
-            <button onClick={deleteAccount} disabled={deleting} style={menuButtonStyle(true)}>
-              <UserX size={14} />
-              {deleting ? "DELETING..." : "DELETE ACCOUNT"}
-            </button>
-          )}
+          <button onClick={deleteAccount} disabled={deleting} style={menuButtonStyle(true)}>
+            <UserX size={14} />
+            {deleting ? "DELETING..." : "DELETE ACCOUNT"}
+          </button>
           {(menuError || menuMessage) && (
             <div
               style={{
