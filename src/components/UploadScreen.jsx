@@ -1,9 +1,19 @@
 import { useState, useRef } from "react";
-import { LogOut, Play, Save, Trash2, Upload, UserX } from "lucide-react";
+import { Play, Save, Trash2, Upload } from "lucide-react";
+import AccountMenu from "./AccountMenu";
 import { parseWordList } from "../utils/wordUtils";
 import { getWordLists, removeWordList, saveWordList, wordListToGamePayload } from "../utils/wordListStore";
 
-export default function UploadScreen({ onLoad, onLogout, onDeleteAccount, user }) {
+export default function UploadScreen({
+  onLoad,
+  onLogout,
+  onDeleteAccount,
+  onChangeUsername,
+  onChangePassword,
+  onToggleTheme,
+  theme,
+  user,
+}) {
   const [dragging3, setDragging3] = useState(false);
   const [dragging4, setDragging4] = useState(false);
   const [threeFile, setThreeFile] = useState(null);
@@ -14,7 +24,6 @@ export default function UploadScreen({ onLoad, onLogout, onDeleteAccount, user }
   const [practiceMode, setPracticeMode] = useState("endless");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   const threeInputRef = useRef();
   const fourInputRef = useRef();
@@ -51,20 +60,6 @@ export default function UploadScreen({ onLoad, onLogout, onDeleteAccount, user }
     setSelectedId(lists[0]?.id || "");
     setMessage("Word list deleted.");
     setError("");
-  };
-
-  const deleteAccount = async () => {
-    const confirmed = window.confirm("Delete your account and local word-list data? This cannot be undone.");
-    if (!confirmed) return;
-    setDeleting(true);
-    setError("");
-    setMessage("");
-    try {
-      await onDeleteAccount();
-    } catch (err) {
-      setError(err.message || "Could not delete account.");
-      setDeleting(false);
-    }
   };
 
   const saveAndLoadBoth = async () => {
@@ -153,16 +148,25 @@ export default function UploadScreen({ onLoad, onLogout, onDeleteAccount, user }
       justifyContent: "center",
       fontFamily: "'Courier New', monospace",
       color: "#e8e4d8",
+      filter: theme === "light" ? "invert(1) hue-rotate(180deg)" : "none",
       padding: 24,
     }}>
+      <AccountMenu
+        user={user}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+        onLogout={onLogout}
+        onDeleteAccount={onDeleteAccount}
+        onChangeUsername={onChangeUsername}
+        onChangePassword={onChangePassword}
+        onError={setError}
+        onMessage={setMessage}
+      />
       <div style={{ fontSize: 11, letterSpacing: 6, color: "#555", marginBottom: 8 }}>
-        COLLINS SCRABBLE WORDS
+        THREE-LETTER WORDS
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, marginBottom: 40 }}>
-        3-Letter Fill-In
-      </div>
-      <div style={{ color: "#555", fontSize: 11, letterSpacing: 1, marginBottom: 18 }}>
-        signed in as {user?.username || user?.email}
+        Tribble
       </div>
 
       <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 20 }}>
@@ -346,53 +350,6 @@ export default function UploadScreen({ onLoad, onLogout, onDeleteAccount, user }
             <Save size={14} />
             SAVE AND PLAY
           </span>
-        </button>
-
-        <button
-          onClick={onLogout}
-          style={{
-            alignItems: "center",
-            background: "#16161c",
-            border: "1px solid #2a2a35",
-            borderRadius: 10,
-            color: "#e8e4d8",
-            cursor: "pointer",
-            display: "flex",
-            fontFamily: "'Courier New', monospace",
-            fontSize: 11,
-            fontWeight: 700,
-            gap: 8,
-            justifyContent: "center",
-            letterSpacing: 2,
-            padding: "13px 18px",
-          }}
-        >
-          <LogOut size={14} />
-          LOG OUT
-        </button>
-
-        <button
-          onClick={deleteAccount}
-          disabled={deleting}
-          style={{
-            alignItems: "center",
-            background: "#201113",
-            border: "1px solid #4a2428",
-            borderRadius: 10,
-            color: deleting ? "#7f4d4d" : "#f87171",
-            cursor: deleting ? "not-allowed" : "pointer",
-            display: "flex",
-            fontFamily: "'Courier New', monospace",
-            fontSize: 11,
-            fontWeight: 700,
-            gap: 8,
-            justifyContent: "center",
-            letterSpacing: 2,
-            padding: "13px 18px",
-          }}
-        >
-          <UserX size={14} />
-          {deleting ? "DELETING..." : "DELETE ACCOUNT"}
         </button>
 
         {(error || message) && (

@@ -125,6 +125,13 @@ function issueVerification(user) {
   console.log(`Verification code for ${user.email}: ${code}`);
 }
 
+function issuePasswordReset(user) {
+  const code = String(crypto.randomInt(100000, 999999));
+  user.passwordResetCodeHash = hashCode(code);
+  user.passwordResetCodeExpiresAt = Date.now() + CODE_TTL_MS;
+  console.log(`Password reset code for ${user.email}: ${code}`);
+}
+
 function authPayload(user) {
   return {
     token: signJwt({ sub: user.id, email: user.email }),
@@ -210,6 +217,52 @@ async function handleApi(req, res) {
       return sendJson(res, 200, authPayload(user));
     }
 
+    if (req.method === "POST" && url.pathname === "/api/auth/request-password-reset") {
+      const { emailOrUsername } = await readBody(req);
+      const login = normalizeEmail(emailOrUsername);
+      const db = readDb();
+      const user = db.users.find((item) => item.email === login || item.username === normalizeUsername(emailOrUsername));
+      if (!user) return sendJson(res, 404, { error: "No account found for that email or username." });
+      if (user.provider !== "password" || !user.passwordHash) {
+        return sendJson(res, 400, { error: "Password reset is only available for email/password accounts." });
+      }
+
+      issuePasswordReset(user);
+      writeDb(db);
+      return sendJson(res, 200, {
+        email: user.email,
+        message: "Password reset code sent. In development it is printed in the server console.",
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/reset-password") {
+      const { email, code, newPassword } = await readBody(req);
+      if (String(newPassword || "").length < 8) {
+        return sendJson(res, 400, { error: "New password must be at least 8 characters." });
+      }
+
+      const db = readDb();
+      const user = db.users.find((item) => item.email === normalizeEmail(email));
+      if (!user) return sendJson(res, 404, { error: "No account found for that email." });
+      if (user.provider !== "password" || !user.passwordHash) {
+        return sendJson(res, 400, { error: "Password reset is only available for email/password accounts." });
+      }
+      if (!user.passwordResetCodeHash || Date.now() > user.passwordResetCodeExpiresAt) {
+        return sendJson(res, 400, { error: "Password reset code expired. Request a new code." });
+      }
+      if (user.passwordResetCodeHash !== hashCode(code)) {
+        return sendJson(res, 400, { error: "Invalid password reset code." });
+      }
+
+      user.passwordHash = hashPassword(newPassword);
+      user.emailVerified = true;
+      user.updatedAt = new Date().toISOString();
+      delete user.passwordResetCodeHash;
+      delete user.passwordResetCodeExpiresAt;
+      writeDb(db);
+      return sendJson(res, 200, authPayload(user));
+    }
+
     if (req.method === "POST" && url.pathname === "/api/auth/google") {
       const { credential } = await readBody(req);
       const profile = await verifyGoogleToken(credential);
@@ -249,6 +302,57 @@ async function handleApi(req, res) {
       const user = db.users.find((item) => item.id === payload.sub);
       if (!user) return sendJson(res, 401, { error: "User not found." });
       return sendJson(res, 200, { user: publicUser(user) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/change-username") {
+      const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+      const payload = verifyJwt(token);
+      if (!payload) return sendJson(res, 401, { error: "Invalid or expired token." });
+
+      const { username } = await readBody(req);
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(String(username || ""))) {
+        return sendJson(res, 400, { error: "Username must be 3-24 letters, numbers, or underscores." });
+      }
+
+      const db = readDb();
+      const user = db.users.find((item) => item.id === payload.sub);
+      if (!user) return sendJson(res, 404, { error: "User not found." });
+
+      const nextUsername = normalizeUsername(username);
+      if (db.users.some((item) => item.id !== user.id && item.username === nextUsername)) {
+        return sendJson(res, 409, { error: "Username is already taken." });
+      }
+
+      user.username = nextUsername;
+      user.updatedAt = new Date().toISOString();
+      writeDb(db);
+      return sendJson(res, 200, { user: publicUser(user) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/change-password") {
+      const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+      const payload = verifyJwt(token);
+      if (!payload) return sendJson(res, 401, { error: "Invalid or expired token." });
+
+      const { currentPassword, newPassword } = await readBody(req);
+      if (String(newPassword || "").length < 8) {
+        return sendJson(res, 400, { error: "New password must be at least 8 characters." });
+      }
+
+      const db = readDb();
+      const user = db.users.find((item) => item.id === payload.sub);
+      if (!user) return sendJson(res, 404, { error: "User not found." });
+      if (user.provider !== "password" || !user.passwordHash) {
+        return sendJson(res, 400, { error: "Password changes are only available for email/password accounts." });
+      }
+      if (!checkPassword(currentPassword, user.passwordHash)) {
+        return sendJson(res, 401, { error: "Current password is incorrect." });
+      }
+
+      user.passwordHash = hashPassword(newPassword);
+      user.updatedAt = new Date().toISOString();
+      writeDb(db);
+      return sendJson(res, 200, { message: "Password changed." });
     }
 
     if (

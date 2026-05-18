@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
-import { Check, RotateCcw, ChevronRight, ChevronLeft, LogOut, Shuffle, UserX } from "lucide-react";
+import { Check, RotateCcw, ChevronRight, ChevronLeft, Shuffle } from "lucide-react";
+import AccountMenu from "./AccountMenu";
 import { ALPHABET } from "../constants";
 import { cardFromKey, generateCard, getFrontHooks, getBackHooks } from "../utils/wordUtils";
 import { getDueCardKeys, getScheduleStats, gradeScheduledCard } from "../utils/scheduleStore";
@@ -111,7 +112,21 @@ function AnswerList({ card, fourSet }) {
   );
 }
 
-export default function Game({ wordSet, fourSet, fileName, listId, practiceMode, onReset, onLogout, onDeleteAccount, user }) {
+export default function Game({
+  wordSet,
+  fourSet,
+  fileName,
+  listId,
+  practiceMode,
+  onReset,
+  onLogout,
+  onDeleteAccount,
+  onChangeUsername,
+  onChangePassword,
+  onToggleTheme,
+  theme,
+  user,
+}) {
   const usedRef = useRef(new Set());
   const gradedRef = useRef(new Set());
   const cardsSinceReviewRef = useRef(0);
@@ -164,8 +179,8 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
   const [showAnswers, setShowAnswers] = useState(false);
   const [solvedCount, setSolvedCount] = useState(0);
   const [scheduleStats, setScheduleStats] = useState(() => getScheduleStats(user, listId));
-  const [deleteError, setDeleteError] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [accountMessage, setAccountMessage] = useState("");
 
   const resetCardState = useCallback(() => {
     setFound(new Set());
@@ -231,19 +246,6 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
     }
   };
 
-  const deleteAccount = async () => {
-    const confirmed = window.confirm("Delete your account and local word-list data? This cannot be undone.");
-    if (!confirmed) return;
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      await onDeleteAccount();
-    } catch (err) {
-      setDeleteError(err.message || "Could not delete account.");
-      setDeleting(false);
-    }
-  };
-
   const buttons = [
     { content: <ChevronLeft size={15} />, action: prevCard, disabled: idx === 0 },
     { content: <ChevronRight size={15} />, action: nextCard },
@@ -265,13 +267,6 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
       action: () => { usedRef.current.clear(); },
     },
     { content: "CHANGE FILE", action: onReset },
-    { content: <><LogOut size={13} /><span style={{ marginLeft: 5 }}>LOG OUT</span></>, action: onLogout },
-    {
-      content: <><UserX size={13} /><span style={{ marginLeft: 5 }}>{deleting ? "DELETING" : "DELETE ACCOUNT"}</span></>,
-      action: deleteAccount,
-      danger: true,
-      disabled: deleting,
-    },
   ];
 
   return (
@@ -285,37 +280,46 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
       justifyContent: "center",
       padding: "24px 16px",
       color: "#e8e4d8",
+      filter: theme === "light" ? "invert(1) hue-rotate(180deg)" : "none",
     }}>
       <style>{STYLES}</style>
+      <AccountMenu
+        user={user}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+        onLogout={onLogout}
+        onDeleteAccount={onDeleteAccount}
+        onChangeUsername={onChangeUsername}
+        onChangePassword={onChangePassword}
+        onError={setAccountError}
+        onMessage={setAccountMessage}
+      />
 
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <div style={{ fontSize: 11, letterSpacing: 6, color: "#555", marginBottom: 6 }}>
-          COLLINS SCRABBLE WORDS
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 6, color: "#555", marginBottom: 7 }}>
+          THREE-LETTER WORDS
         </div>
-        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 2 }}>
-          3-Letter Fill-In
+        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: 2 }}>
+          Tribble
         </div>
-        <div style={{ fontSize: 10, color: "#3a3a4a", marginTop: 5, letterSpacing: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#4f4f62", marginTop: 7, letterSpacing: 2 }}>
           {fileName}
         </div>
-        <div style={{ fontSize: 10, color: "#3a3a4a", marginTop: 5, letterSpacing: 2 }}>
-          {user?.username || user?.email}
-        </div>
-        <div style={{ fontSize: 10, color: "#555", marginTop: 8, letterSpacing: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 900, color: "#5f5f72", marginTop: 10, letterSpacing: 2 }}>
           {isScheduledMode
             ? `SCHEDULED REVIEW · ${scheduleStats.due} DUE · ${scheduleStats.total} SAVED`
             : "ENDLESS RANDOM"}
         </div>
-        <div style={{ fontSize: 10, color: "#444", marginTop: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#555", marginTop: 9 }}>
           CARD {idx + 1} · SOLVED {solvedCount}
         </div>
         {card?.source === "scheduled" && (
-          <div style={{ fontSize: 10, color: "#f59e0b", marginTop: 4, letterSpacing: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: "#f59e0b", marginTop: 6, letterSpacing: 2 }}>
             REVIEW CARD
           </div>
         )}
-        <div style={{ fontSize: 10, color: "#333", marginTop: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "#444", marginTop: 6 }}>
           HISTORY: {history.length}
         </div>
       </div>
@@ -442,9 +446,9 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
               justifyContent: "center",
               padding: "11px 6px",
               background: "#16161c",
-              border: `1px solid ${btn.danger ? "#4a2428" : btn.accent ? "#f59e0b" : "#2a2a35"}`,
+              border: `1px solid ${btn.accent ? "#f59e0b" : "#2a2a35"}`,
               borderRadius: 8,
-              color: btn.disabled ? "#333" : btn.danger ? "#f87171" : btn.accent ? "#f59e0b" : "#e8e4d8",
+              color: btn.disabled ? "#333" : btn.accent ? "#f59e0b" : "#e8e4d8",
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1,
@@ -456,12 +460,20 @@ export default function Game({ wordSet, fourSet, fileName, listId, practiceMode,
         ))}
       </div>
 
-      <div style={{ marginTop: 14, fontSize: 10, color: "#2a2a35", letterSpacing: 1, textAlign: "center" }}>
+      <div style={{
+        marginTop: 16,
+        fontSize: 12,
+        fontWeight: 800,
+        color: "#77788a",
+        letterSpacing: 1.5,
+        textAlign: "center",
+        textTransform: "uppercase",
+      }}>
         type a letter · press enter or check
       </div>
-      {deleteError && (
-        <div style={{ marginTop: 10, fontSize: 11, color: "#f87171", textAlign: "center" }}>
-          {deleteError}
+      {(accountError || accountMessage) && (
+        <div style={{ marginTop: 10, fontSize: 11, color: accountError ? "#f87171" : "#4ade80", textAlign: "center" }}>
+          {accountError || accountMessage}
         </div>
       )}
     </div>

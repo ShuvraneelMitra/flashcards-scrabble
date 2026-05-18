@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { LogIn, MailCheck, UserPlus } from "lucide-react";
-import { clearToken, getMe, googleLogin, login, resendCode, signup, verifyEmail } from "../utils/authApi";
+import { KeyRound, LogIn, MailCheck, Send, UserPlus } from "lucide-react";
+import {
+  clearToken,
+  getMe,
+  googleLogin,
+  login,
+  requestPasswordReset,
+  resendCode,
+  resetPassword,
+  signup,
+  verifyEmail,
+} from "../utils/authApi";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
@@ -56,6 +66,7 @@ function PrimaryButton({ children, disabled, icon, ...props }) {
 export default function AuthScreen({ onAuthenticated }) {
   const [mode, setMode] = useState("login");
   const [pendingEmail, setPendingEmail] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     username: "",
@@ -63,6 +74,9 @@ export default function AuthScreen({ onAuthenticated }) {
     emailOrUsername: "",
     password: "",
     code: "",
+    resetCode: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -180,6 +194,31 @@ export default function AuthScreen({ onAuthenticated }) {
     });
   };
 
+  const handleRequestPasswordReset = (event) => {
+    event.preventDefault();
+    run(async () => {
+      const { email, message: nextMessage } = await requestPasswordReset(form.emailOrUsername);
+      setResetEmail(email);
+      setMode("resetPassword");
+      setMessage(nextMessage || "Password reset code sent.");
+    });
+  };
+
+  const handleResetPassword = (event) => {
+    event.preventDefault();
+    run(async () => {
+      if (form.newPassword !== form.confirmPassword) {
+        throw new Error("New passwords do not match.");
+      }
+      const { user } = await resetPassword({
+        email: resetEmail,
+        code: form.resetCode,
+        newPassword: form.newPassword,
+      });
+      onAuthenticated(user);
+    });
+  };
+
   return (
     <div
       style={{
@@ -195,10 +234,10 @@ export default function AuthScreen({ onAuthenticated }) {
       }}
     >
       <div style={{ fontSize: 11, letterSpacing: 6, color: "#555", marginBottom: 8 }}>
-        COLLINS SCRABBLE WORDS
+        THREE-LETTER WORDS
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, marginBottom: 28 }}>
-        Account Access
+        Tribble
       </div>
 
       <div
@@ -247,6 +286,26 @@ export default function AuthScreen({ onAuthenticated }) {
             <Field label="EMAIL OR USERNAME" value={form.emailOrUsername} onChange={update("emailOrUsername")} autoComplete="username" required />
             <Field label="PASSWORD" type="password" value={form.password} onChange={update("password")} autoComplete="current-password" required />
             <PrimaryButton disabled={loading} icon={<LogIn size={15} />}>LOGIN</PrimaryButton>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("forgotPassword");
+                setError("");
+                setMessage("");
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#60a5fa",
+                cursor: "pointer",
+                fontFamily: "'Courier New', monospace",
+                fontSize: 11,
+                letterSpacing: 1,
+                padding: 4,
+              }}
+            >
+              FORGOT PASSWORD?
+            </button>
           </form>
         )}
 
@@ -270,6 +329,65 @@ export default function AuthScreen({ onAuthenticated }) {
             <button
               type="button"
               onClick={handleResend}
+              disabled={loading}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#60a5fa",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontFamily: "'Courier New', monospace",
+                fontSize: 11,
+                letterSpacing: 1,
+                padding: 4,
+              }}
+            >
+              RESEND CODE
+            </button>
+          </form>
+        )}
+
+        {mode === "forgotPassword" && (
+          <form onSubmit={handleRequestPasswordReset} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ color: "#777", fontSize: 12, lineHeight: 1.6 }}>
+              Enter your email or username. A 6-digit reset code will be sent to your email.
+            </div>
+            <Field label="EMAIL OR USERNAME" value={form.emailOrUsername} onChange={update("emailOrUsername")} autoComplete="username" required />
+            <PrimaryButton disabled={loading} icon={<Send size={15} />}>SEND RESET CODE</PrimaryButton>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setError("");
+                setMessage("");
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#60a5fa",
+                cursor: "pointer",
+                fontFamily: "'Courier New', monospace",
+                fontSize: 11,
+                letterSpacing: 1,
+                padding: 4,
+              }}
+            >
+              BACK TO LOGIN
+            </button>
+          </form>
+        )}
+
+        {mode === "resetPassword" && (
+          <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ color: "#777", fontSize: 12, lineHeight: 1.6 }}>
+              Enter the 6-digit reset code for {resetEmail}.
+            </div>
+            <Field label="RESET CODE" value={form.resetCode} onChange={update("resetCode")} inputMode="numeric" maxLength={6} required />
+            <Field label="NEW PASSWORD" type="password" value={form.newPassword} onChange={update("newPassword")} autoComplete="new-password" minLength={8} required />
+            <Field label="CONFIRM PASSWORD" type="password" value={form.confirmPassword} onChange={update("confirmPassword")} autoComplete="new-password" minLength={8} required />
+            <PrimaryButton disabled={loading} icon={<KeyRound size={15} />}>CHANGE PASSWORD</PrimaryButton>
+            <button
+              type="button"
+              onClick={handleRequestPasswordReset}
               disabled={loading}
               style={{
                 background: "transparent",

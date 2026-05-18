@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AuthScreen from "./components/AuthScreen";
 import UploadScreen from "./components/UploadScreen";
 import Game from "./components/Game";
-import { clearToken, deleteAccount } from "./utils/authApi";
+import { changePassword, changeUsername, clearToken, deleteAccount } from "./utils/authApi";
 import { clearSchedules } from "./utils/scheduleStore";
 import { clearWordLists } from "./utils/wordListStore";
 
@@ -15,6 +15,11 @@ export default function App() {
   const [listName, setListName] = useState("");
   const [listId, setListId] = useState("");
   const [practiceMode, setPracticeMode] = useState("endless");
+  const [theme, setTheme] = useState(() => localStorage.getItem("flashcards_scrabble_theme") || "dark");
+
+  useEffect(() => {
+    localStorage.setItem("flashcards_scrabble_theme", theme);
+  }, [theme]);
 
   const leaveAccount = () => {
     clearToken();
@@ -36,6 +41,21 @@ export default function App() {
     leaveAccount();
   };
 
+  const handleChangeUsername = async (username) => {
+    const cleanUsername = username.trim();
+    if (!cleanUsername) throw new Error("Username is required.");
+    const { user: updatedUser } = await changeUsername(cleanUsername);
+    if (!updatedUser) throw new Error("Username change did not return an updated user.");
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
+  const handleChangePassword = async ({ currentPassword, newPassword }) => {
+    if (!currentPassword) throw new Error("Current password is required.");
+    if (!newPassword || newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+    await changePassword({ currentPassword, newPassword });
+  };
+
   if (!user) {
     return <AuthScreen onAuthenticated={setUser} />;
   }
@@ -46,6 +66,10 @@ export default function App() {
         user={user}
         onLogout={handleLogout}
         onDeleteAccount={handleDeleteAccount}
+        onChangeUsername={handleChangeUsername}
+        onChangePassword={handleChangePassword}
+        theme={theme}
+        onToggleTheme={() => setTheme((value) => (value === "dark" ? "light" : "dark"))}
         onLoad={({ threeSet, fourSet, threeName, fourName, listName, listId, practiceMode }) => {
           setThreeSet(threeSet);
           setFourSet(fourSet);
@@ -69,6 +93,10 @@ export default function App() {
       user={user}
       onLogout={handleLogout}
       onDeleteAccount={handleDeleteAccount}
+      onChangeUsername={handleChangeUsername}
+      onChangePassword={handleChangePassword}
+      theme={theme}
+      onToggleTheme={() => setTheme((value) => (value === "dark" ? "light" : "dark"))}
       onReset={() => {
         setThreeSet(null);
         setFourSet(null);

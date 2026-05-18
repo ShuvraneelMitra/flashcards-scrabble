@@ -42,6 +42,20 @@ export function login(payload) {
   });
 }
 
+export function requestPasswordReset(emailOrUsername) {
+  return request("/api/auth/request-password-reset", {
+    method: "POST",
+    body: JSON.stringify({ emailOrUsername }),
+  });
+}
+
+export function resetPassword(payload) {
+  return request("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function verifyEmail(payload) {
   return request("/api/auth/verify-email", {
     method: "POST",
@@ -65,6 +79,20 @@ export function googleLogin(credential) {
 
 export function getMe() {
   return request("/api/auth/me");
+}
+
+export function changeUsername(username) {
+  return request("/api/auth/change-username", {
+    method: "POST",
+    body: JSON.stringify({ username }),
+  });
+}
+
+export function changePassword(payload) {
+  return request("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function deleteAccount() {
