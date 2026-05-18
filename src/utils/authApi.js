@@ -211,7 +211,10 @@ export function changeUsername(username) {
 
 export function changePassword(payload) {
   if (supabaseEnabled) {
-    throw new Error("Use Forgot Password to change password when using Supabase.");
+    return supabase.auth.updateUser({ password: String(payload?.newPassword || "") }).then(({ error }) => {
+      if (error) throw new Error(error.message);
+      return { message: "Password changed." };
+    });
   }
   return request("/api/auth/change-password", {
     method: "POST",

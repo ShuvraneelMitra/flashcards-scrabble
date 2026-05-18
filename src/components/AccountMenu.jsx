@@ -91,7 +91,7 @@ export default function AccountMenu({
     onMessage?.("");
     try {
       await onChangePassword({
-        currentPassword: passwordForm.currentPassword,
+        currentPassword: authMode === "local" ? passwordForm.currentPassword : undefined,
         newPassword: passwordForm.newPassword,
       });
       const nextMessage = "Password changed.";
@@ -235,7 +235,7 @@ export default function AccountMenu({
               />
             </button>
           </div>
-          {authMode === "local" && (
+          {(authMode === "local" || authMode === "supabase") && (
             <button
               onClick={() => {
                 setShowPasswordForm((value) => !value);
@@ -251,7 +251,7 @@ export default function AccountMenu({
               {changingPassword ? "CHANGING..." : "CHANGE PASSWORD"}
             </button>
           )}
-          {authMode === "local" && showPasswordForm && (
+          {(authMode === "local" || authMode === "supabase") && showPasswordForm && (
             <form
               onSubmit={changePassword}
               style={{
@@ -262,15 +262,17 @@ export default function AccountMenu({
                 padding: "10px 12px 12px",
               }}
             >
-              <input
-                type="password"
-                value={passwordForm.currentPassword}
-                onChange={updatePasswordField("currentPassword")}
-                placeholder="Current password"
-                autoComplete="current-password"
-                required
-                style={passwordInputStyle}
-              />
+              {authMode === "local" && (
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={updatePasswordField("currentPassword")}
+                  placeholder="Current password"
+                  autoComplete="current-password"
+                  required
+                  style={passwordInputStyle}
+                />
+              )}
               <input
                 type="password"
                 value={passwordForm.newPassword}

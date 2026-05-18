@@ -55,8 +55,13 @@ export default function App() {
   };
 
   const handleChangePassword = async ({ currentPassword, newPassword }) => {
-    if (!currentPassword) throw new Error("Current password is required.");
     if (!newPassword || newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+    if (supabaseEnabled && supabase) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+      return;
+    }
+    if (!currentPassword) throw new Error("Current password is required.");
     await changePassword({ currentPassword, newPassword });
   };
 
