@@ -1,4 +1,4 @@
-import { supabase, supabaseEnabled } from "./supabaseClient";
+import { getAppRedirectUrl, supabase, supabaseEnabled } from "./supabaseClient";
 
 const TOKEN_KEY = "flashcards_scrabble_auth_token";
 
@@ -42,7 +42,7 @@ export function signup(payload) {
         password,
         options: {
           data: { fullName, username },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: getAppRedirectUrl(),
         },
       })
       .then(({ data, error }) => {
@@ -103,7 +103,7 @@ export function requestPasswordReset(emailOrUsername) {
   if (supabaseEnabled) {
     const email = String(emailOrUsername || "").trim();
     if (!email.includes("@")) throw new Error("Supabase password reset requires an email address.");
-    return supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }).then(({ error }) => {
+    return supabase.auth.resetPasswordForEmail(email, { redirectTo: getAppRedirectUrl() }).then(({ error }) => {
       if (error) throw new Error(error.message);
       return { email, message: "Password reset email sent." };
     });

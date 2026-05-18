@@ -15,3 +15,8 @@ export const supabase = supabaseEnabled
     })
   : null;
 
+export function getAppRedirectUrl() {
+  const basePath = process.env.PUBLIC_URL || "";
+  const cleanBase = basePath && basePath !== "/" ? `/${basePath.replace(/^\/+|\/+$/g, "")}` : "";
+  return `${window.location.origin}${cleanBase || ""}`;
+}

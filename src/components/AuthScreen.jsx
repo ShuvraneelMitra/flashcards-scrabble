@@ -10,7 +10,7 @@ import {
   signup,
   verifyEmail,
 } from "../utils/authApi";
-import { supabase, supabaseEnabled } from "../utils/supabaseClient";
+import { getAppRedirectUrl, supabase, supabaseEnabled } from "../utils/supabaseClient";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
@@ -384,7 +384,7 @@ export default function AuthScreen({ onAuthenticated }) {
               run(async () => {
                 const { error } = await supabase.auth.signInWithOAuth({
                   provider: "google",
-                  options: { redirectTo: window.location.origin },
+                  options: { redirectTo: getAppRedirectUrl() },
                 });
                 if (error) throw new Error(error.message);
               })
