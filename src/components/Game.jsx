@@ -120,7 +120,6 @@ export default function Game({
   practiceMode,
   onReset,
   onLogout,
-  onDeleteAccount,
   onChangeUsername,
   onChangePassword,
   onToggleTheme,
@@ -290,7 +289,6 @@ export default function Game({
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
-        onDeleteAccount={onDeleteAccount}
         onChangeUsername={onChangeUsername}
         onChangePassword={onChangePassword}
         onError={setAccountError}

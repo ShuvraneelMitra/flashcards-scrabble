@@ -7,7 +7,6 @@ import { getWordLists, removeWordList, saveWordList, wordListToGamePayload } fro
 export default function UploadScreen({
   onLoad,
   onLogout,
-  onDeleteAccount,
   onChangeUsername,
   onChangePassword,
   onToggleTheme,
@@ -158,7 +157,6 @@ export default function UploadScreen({
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
-        onDeleteAccount={onDeleteAccount}
         onChangeUsername={onChangeUsername}
         onChangePassword={onChangePassword}
         onError={setError}

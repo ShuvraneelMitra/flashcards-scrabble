@@ -222,14 +222,4 @@ export function changePassword(payload) {
   });
 }
 
-export function deleteAccount() {
-  if (supabaseEnabled) {
-    return supabase.functions.invoke("delete-account").then(({ error }) => {
-      if (error) throw new Error(error.message);
-      return { message: "Account deleted." };
-    });
-  }
-  return request("/api/auth/delete-account", {
-    method: "POST",
-  });
-}
+// deleteAccount removed.

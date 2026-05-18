@@ -51,18 +51,9 @@ REACT_APP_SUPABASE_ANON_KEY=...
 
 When Supabase is enabled, Tribble uses Supabase Auth in the browser (no Node server required for login/signup/verify/reset). Supabase password reset is handled via the email link (not a 6-digit code).
 
-### Delete Account (Supabase Edge Function)
+### Account deletion
 
-Deleting a Supabase Auth user requires admin privileges, so Tribble uses a Supabase Edge Function named `delete-account`.
-
-1. Install Supabase CLI and login
-2. Link your project
-3. Deploy the function:
-   - `supabase functions deploy delete-account`
-4. Set function secrets:
-   - `supabase secrets set SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=...`
-
-After deployment, the in-app "Delete account" option will work for Supabase auth.
+Account deletion is not currently supported from within the app.
 
 ### GitHub Pages deployment
 

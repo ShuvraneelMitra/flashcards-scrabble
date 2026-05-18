@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, KeyRound, LogOut, Moon, Pencil, Sun, UserX } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Moon, Pencil, Sun } from "lucide-react";
 
 export default function AccountMenu({
   user,
@@ -7,14 +7,12 @@ export default function AccountMenu({
   onToggleTheme,
   authMode = "local",
   onLogout,
-  onDeleteAccount,
   onChangeUsername,
   onChangePassword,
   onError,
   onMessage,
 }) {
   const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [changingUsername, setChangingUsername] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -48,24 +46,6 @@ export default function AccountMenu({
       onError?.(nextError);
     } finally {
       setChangingUsername(false);
-    }
-  };
-
-  const deleteAccount = async () => {
-    const confirmed = window.confirm("Delete your account and local word-list data? This cannot be undone.");
-    if (!confirmed) return;
-    setDeleting(true);
-    setMenuError("");
-    setMenuMessage("");
-    onError?.("");
-    onMessage?.("");
-    try {
-      await onDeleteAccount();
-    } catch (err) {
-      const nextError = err.message || "Could not delete account.";
-      setMenuError(nextError);
-      onError?.(nextError);
-      setDeleting(false);
     }
   };
 
@@ -318,10 +298,6 @@ export default function AccountMenu({
           <button onClick={onLogout} style={menuButtonStyle()}>
             <LogOut size={14} />
             LOG OUT
-          </button>
-          <button onClick={deleteAccount} disabled={deleting} style={menuButtonStyle(true)}>
-            <UserX size={14} />
-            {deleting ? "DELETING..." : "DELETE ACCOUNT"}
           </button>
           {(menuError || menuMessage) && (
             <div

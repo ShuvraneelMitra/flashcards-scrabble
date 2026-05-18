@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import AuthScreen from "./components/AuthScreen";
 import UploadScreen from "./components/UploadScreen";
 import Game from "./components/Game";
-import { changePassword, changeUsername, clearToken, deleteAccount } from "./utils/authApi";
-import { clearSchedules } from "./utils/scheduleStore";
-import { clearWordLists } from "./utils/wordListStore";
+import { changePassword, changeUsername, clearToken } from "./utils/authApi";
 import { supabase, supabaseEnabled } from "./utils/supabaseClient";
 
 export default function App() {
@@ -38,13 +36,6 @@ export default function App() {
     leaveAccount();
   };
 
-  const handleDeleteAccount = async () => {
-    await deleteAccount();
-    clearWordLists(user);
-    clearSchedules(user);
-    leaveAccount();
-  };
-
   const handleChangeUsername = async (username) => {
     const cleanUsername = username.trim();
     if (!cleanUsername) throw new Error("Username is required.");
@@ -75,7 +66,6 @@ export default function App() {
         user={user}
         authMode={supabaseEnabled ? "supabase" : "local"}
         onLogout={handleLogout}
-        onDeleteAccount={handleDeleteAccount}
         onChangeUsername={handleChangeUsername}
         onChangePassword={handleChangePassword}
         theme={theme}
@@ -103,7 +93,6 @@ export default function App() {
       user={user}
       authMode={supabaseEnabled ? "supabase" : "local"}
       onLogout={handleLogout}
-      onDeleteAccount={handleDeleteAccount}
       onChangeUsername={handleChangeUsername}
       onChangePassword={handleChangePassword}
       theme={theme}
