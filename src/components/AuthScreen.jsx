@@ -66,7 +66,6 @@ function PrimaryButton({ children, disabled, icon, ...props }) {
 export default function AuthScreen({ onAuthenticated }) {
   const [mode, setMode] = useState("login");
   const [pendingEmail, setPendingEmail] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     username: "",
@@ -198,7 +197,6 @@ export default function AuthScreen({ onAuthenticated }) {
     event.preventDefault();
     run(async () => {
       const { email, message: nextMessage } = await requestPasswordReset(form.emailOrUsername);
-      setResetEmail(email);
       setMode("login");
       setMessage(nextMessage || "Password reset email sent.");
     });
