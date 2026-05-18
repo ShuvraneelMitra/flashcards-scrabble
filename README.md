@@ -1,72 +1,54 @@
-## Auth setup
+# Tribble
 
-Run the React app and the auth API in separate terminals:
+I love playing Scrabble! In the quest for getting better at the game, I had been trying to conquer the 3-letter words, of which there are notoriously many (including *very* weird ones such as **TWP** and **YGO**). Doing these by brute-force like I did with the 2-letter words, felt like an impossible task, so naturally, being an engineering student, my first reaction was to build a solution! Tribble is a website for learning these 3-letter words. It generates fill-in-the-blank prompts, tracks what you got right, and (optionally) schedules review cards between random ones.
+
+## How To Use
+
+1. Sign up and log in to [https://shuvraneelmitra.github.io/tribble/](https://shuvraneelmitra.github.io/tribble/).
+2. Choose a practice mode:
+   - Endless random: always new random prompts
+   - Scheduled review: mixes due review cards into random practice
+3. Upload or select a saved word list pair (3-letter + 4-letter). If you are just starting out, you can download the `CSW_3s.txt` and `CSW_4s.txt` files present in the root of the repo; they contain all the 3- and 4-letter words in the CSW lexicon respectively.
+4. Type letters to solve the blanks, much like Aerolith if you come to think of it.
+
+Saved word lists and scheduled review are currently stored in the browser (`localStorage`).
+
+## Contributing
+
+Contributions are always welcome!!!! You are more than encouraged to fork a copy and make some edits to customise how the website functions for you, or feel free to open an issue/PR for any difficulties you might face while using the tool.
+
+1. Create a branch from `main`.
+2. Keep changes focused and prefer small PRs.
+3. Run a production build before opening a PR:
 
 ```bash
-npm run server
+DISABLE_ESLINT_PLUGIN=true npm run build
+```
+
+## Local Development
+
+Requirements: Node 20+.
+
+```bash
+npm install
 npm start
 ```
 
-For a single production service:
+### Auth (Recommended: Supabase)
+
+For static hosting (GitHub Pages), Tribble uses Supabase Auth in the browser.
+
+Set build-time env vars:
 
 ```bash
-npm run build
-npm run start:prod
+REACT_APP_SUPABASE_URL=https://<project-ref>.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-The Node server serves `/api/*` from `server/server.js` and serves the React build for all other routes.
-Health checks can use `/api/health`.
+### Optional Local Auth Server
 
-There is also a `render.yaml` blueprint for deploying as one Render web service. It mounts a small persistent disk at `/var/data` and points `DATA_DIR` there. This is acceptable as a transitional setup, but a real database is still recommended before serious public use.
-
-The local auth API stores development users in `server/data/auth-db.json`, which is ignored by Git. Email verification codes are printed in the server console unless you replace `issueVerification` in `server/server.js` with a real email provider.
-
-Set these environment variables before production use:
+This repo also includes a small Node auth API for local experimentation:
 
 ```bash
-NODE_ENV=production
-JWT_SECRET=replace-with-a-long-random-secret
-CLIENT_ORIGIN=https://your-domain.com
-DATA_DIR=/var/data
-RESEND_API_KEY=your-resend-api-key
-EMAIL_FROM=Tribble <noreply@your-domain.com>
+npm run server
 ```
-
-Google sign-in requires the same OAuth client ID on the server and React app.
-
-Copy `.env.example` when configuring a host. In production, the server will refuse to start without `JWT_SECRET`.
-
-The auth API includes basic in-memory rate limiting and 60-second verification/reset code cooldowns. For multi-instance hosting, replace the in-memory limiter with a shared store such as Redis.
-
-Email verification and password reset codes use Resend when `RESEND_API_KEY` and `EMAIL_FROM` are configured. Without those variables, codes are printed in the server console for local development.
-
-## Static Hosting (GitHub Pages) + Supabase
-
-GitHub Pages is static-only. To host Tribble there with real sign-in and email verification, configure Supabase and set:
-
-```bash
-REACT_APP_SUPABASE_URL=...
-REACT_APP_SUPABASE_ANON_KEY=...
-```
-
-When Supabase is enabled, Tribble uses Supabase Auth in the browser (no Node server required for login/signup/verify/reset). Supabase password reset is handled via the email link (not a 6-digit code).
-
-### Account deletion
-
-Account deletion is not currently supported from within the app.
-
-### GitHub Pages deployment
-
-This repo includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml`.
-
-In GitHub, add these repository secrets:
-
-```bash
-REACT_APP_SUPABASE_URL
-REACT_APP_SUPABASE_ANON_KEY
-```
-
-Then enable Pages:
-- Settings -> Pages -> Build and deployment -> Source: GitHub Actions
-
-The site will deploy from `main` to `https://shuvraneelmitra.github.io/tribble`.
