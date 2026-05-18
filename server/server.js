@@ -118,7 +118,6 @@ function isSensitiveEndpoint(method, pathname) {
     "/api/auth/reset-password",
     "/api/auth/change-username",
     "/api/auth/change-password",
-    "/api/auth/delete-account",
   ].includes(pathname);
 }
 
@@ -465,23 +464,6 @@ async function handleApi(req, res) {
       user.updatedAt = new Date().toISOString();
       writeDb(db);
       return sendJson(res, 200, { message: "Password changed." });
-    }
-
-    if (
-      (req.method === "DELETE" && url.pathname === "/api/auth/account") ||
-      (req.method === "POST" && url.pathname === "/api/auth/delete-account")
-    ) {
-      const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-      const payload = verifyJwt(token);
-      if (!payload) return sendJson(res, 401, { error: "Invalid or expired token." });
-
-      const db = readDb();
-      const user = db.users.find((item) => item.id === payload.sub);
-      if (!user) return sendJson(res, 404, { error: "User not found." });
-
-      db.users = db.users.filter((item) => item.id !== payload.sub);
-      writeDb(db);
-      return sendJson(res, 200, { message: "Account deleted." });
     }
 
     if (url.pathname.startsWith("/api/")) {
